@@ -29,24 +29,28 @@ app.get('/healthz', (req, res) => {
 
 /**
  * Perplexity health / validation endpoint
- * Supports:
  * - GET /perplexity-health -> { ok: true }
- * - POST /perplexity-health (JSON-RPC initialize)
+ * - POST /perplexity-health
+ *   * method: "initialize" -> JSON-RPC response
+ *   * method: "notifications/initialized" -> simple OK
  */
 app.get('/perplexity-health', (req, res) => {
   res.json({ ok: true });
 });
 
-// JSON-RPC initialize handler just for Perplexity validation (no auth)
+// No auth on this endpoint
 app.post('/perplexity-health', (req, res) => {
   console.log('Perplexity health request body:', req.body);
 
-  if (req.body && req.body.method === 'initialize') {
+  const { method, id, params, jsonrpc } = req.body || {};
+
+  // 1) Proper JSON-RPC initialize request
+  if (method === 'initialize') {
     return res.json({
       jsonrpc: '2.0',
-      id: req.body.id ?? 0,
+      id: id ?? 0,
       result: {
-        protocolVersion: req.body.params?.protocolVersion ?? '2025-06-18',
+        protocolVersion: params?.protocolVersion ?? '2025-06-18',
         capabilities: {
           tools: {},
           resources: {},
@@ -60,15 +64,26 @@ app.post('/perplexity-health', (req, res) => {
     });
   }
 
-  // Fallback: return a JSON-RPC error if something unexpected comes in
-  res.json({
-    jsonrpc: '2.0',
-    id: req.body?.id ?? 0,
-    error: {
-      code: -32600,
-      message: 'Invalid Request'
-    }
-  });
+  // 2) Notifications (no id) like `notifications/initialized`
+  if (method === 'notifications/initialized' && id === undefined) {
+    return res.json({ ok: true });
+    // Alternatively: return res.status(204).send();
+  }
+
+  // 3) Clearly malformed JSON-RPC request
+  if (!method || jsonrpc !== '2.0') {
+    return res.json({
+      jsonrpc: '2.0',
+      id: id ?? null,
+      error: {
+        code: -32600,
+        message: 'Invalid Request'
+      }
+    });
+  }
+
+  // 4) Any other well-formed methods: just acknowledge for now
+  return res.json({ ok: true });
 });
 
 /**
@@ -131,7 +146,7 @@ function handleDumpContext(params) {
     '**Summary**',
     `- ${dump.summary}`,
     ''
-  ];
+  };
 
   const pushList = (label, items) => {
     if (Array.isArray(items) && items.length) {
