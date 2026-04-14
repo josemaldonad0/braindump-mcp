@@ -16,6 +16,15 @@ if (!fs.existsSync(braindumpDir)) {
 
 app.use(bodyParser.json());
 
+// healthcheck
+app.get('/', (req, res) => {
+  res.json({ ok: true });
+});
+
+app.get('/healthz', (req, res) => {
+  res.json({ ok: true });
+});
+
 // Simple API key auth
 app.use((req, res, next) => {
   if (!apiKey) return next();
@@ -26,10 +35,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// healthcheck
-app.get('/', (req, res) => {
-  res.json({ ok: true });
-});
+
 
 // Helpers
 function loadDomain(domainId) {
