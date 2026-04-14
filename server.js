@@ -32,12 +32,14 @@ app.get('/perplexity-health', (req, res) => {
 
 // Public healthcheck FIRST (no auth)
 // Perplexity validation endpoint: JSON-RPC-shaped response, no auth
-app.post('/perplexity-health', (req, res) => {
+app.post('/perplexity-health', express.json(), (req, res) => {
+  console.log('Perplexity health request body:', req.body);
+
   res.json({
     jsonrpc: "2.0",
-    id: "healthcheck",        // non-null, string
+    id: "healthcheck",
     result: {
-      method: "health.check", // include a method-like field in result
+      method: "health.check",
       ok: true
     }
   });
