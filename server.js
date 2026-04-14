@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080; // Cloud Run uses PORT
 const apiKey = process.env.API_KEY || '';
 const publicBaseUrl = process.env.PUBLIC_BASE_URL || '';
 
@@ -16,7 +16,9 @@ if (!fs.existsSync(braindumpDir)) {
 
 app.use(bodyParser.json());
 
-// healthcheck
+/**
+ * Basic health checks
+ */
 app.get('/', (req, res) => {
   res.json({ ok: true });
 });
@@ -25,38 +27,34 @@ app.get('/healthz', (req, res) => {
   res.json({ ok: true });
 });
 
-// Public healthcheck just for connector validation
+/**
+ * Perplexity health / validation endpoint
+ * Supports:
+ * - GET /perplexity-health -> { ok: true }
+ * - POST /perplexity-health (JSON-RPC initialize)
+ */
 app.get('/perplexity-health', (req, res) => {
   res.json({ ok: true });
 });
 
-// Public healthcheck FIRST (no auth)
-// Perplexity validation endpoint: JSON-RPC-shaped response, no auth
-import express from 'express';
-// ... existing imports
-
-const app = express();
-app.use(express.json());
-
-// JSON-RPC initialize handler just for Perplexity validation
+// JSON-RPC initialize handler just for Perplexity validation (no auth)
 app.post('/perplexity-health', (req, res) => {
   console.log('Perplexity health request body:', req.body);
 
-  // Expecting an initialize request
   if (req.body && req.body.method === 'initialize') {
     return res.json({
-      jsonrpc: "2.0",
+      jsonrpc: '2.0',
       id: req.body.id ?? 0,
       result: {
-        protocolVersion: req.body.params?.protocolVersion ?? "2025-06-18",
+        protocolVersion: req.body.params?.protocolVersion ?? '2025-06-18',
         capabilities: {
           tools: {},
           resources: {},
           prompts: {}
         },
         serverInfo: {
-          name: "braindump-mcp",
-          version: "0.1.0"
+          name: 'braindump-mcp',
+          version: '0.1.0'
         }
       }
     });
@@ -64,16 +62,18 @@ app.post('/perplexity-health', (req, res) => {
 
   // Fallback: return a JSON-RPC error if something unexpected comes in
   res.json({
-    jsonrpc: "2.0",
+    jsonrpc: '2.0',
     id: req.body?.id ?? 0,
     error: {
       code: -32600,
-      message: "Invalid Request"
+      message: 'Invalid Request'
     }
   });
 });
 
-// Simple API key auth
+/**
+ * Simple API key auth for the rest of the API
+ */
 app.use((req, res, next) => {
   if (!apiKey) return next();
   const headerKey = req.headers['x-api-key'];
@@ -83,9 +83,9 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
-// Helpers
+/**
+ * Helpers
+ */
 function loadDomain(domainId) {
   const filePath = path.join(braindumpDir, `${domainId}.md`);
   if (!fs.existsSync(filePath)) return { filePath, content: '' };
@@ -100,7 +100,9 @@ function domainUrl(domainId) {
   return `${publicBaseUrl}/braindump/${domainId}`;
 }
 
-// GET /braindump/:domain_id – serve markdown as plain text
+/**
+ * GET /braindump/:domain_id – serve markdown as plain text
+ */
 app.get('/braindump/:domain_id', (req, res) => {
   const domainId = req.params.domain_id;
   const { content } = loadDomain(domainId);
@@ -108,7 +110,9 @@ app.get('/braindump/:domain_id', (req, res) => {
   res.type('text/plain').send(content);
 });
 
-// ---- Tool handlers ----
+/**
+ * Tool handlers
+ */
 
 // dump_context
 function handleDumpContext(params) {
@@ -154,6 +158,7 @@ function handleDumpContext(params) {
   if (!content) {
     newContent = `# Domain: ${domain_id}\n\n## Dumps\n\n`;
   }
+
   newContent += section.join('\n') + '\n';
 
   saveDomain(filePath, newContent);
@@ -212,14 +217,16 @@ function handleSearchDumps(params) {
     dumps: relevant.map(d => ({
       dump_id: d.dump_id,
       title: d.title,
-      summary: '', // could parse from raw if needed
+      summary: '',
       created_at: d.created_at
     })),
     note_url: url
   };
 }
 
-// MCP-like entrypoint: POST /mcp/tools/invoke
+/**
+ * MCP-like entrypoint: POST /mcp/tools/invoke
+ */
 app.post('/mcp/tools/invoke', (req, res) => {
   const { tool, params } = req.body || {};
   let result;
@@ -237,6 +244,9 @@ app.post('/mcp/tools/invoke', (req, res) => {
   res.json(result);
 });
 
+/**
+ * Start server
+ */
 app.listen(port, () => {
   console.log(`braindump MCP server listening on port ${port}`);
 });
