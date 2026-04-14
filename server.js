@@ -146,7 +146,7 @@ function handleDumpContext(params) {
     '**Summary**',
     `- ${dump.summary}`,
     ''
-  };
+  ];
 
   const pushList = (label, items) => {
     if (Array.isArray(items) && items.length) {
