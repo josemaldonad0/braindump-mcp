@@ -32,15 +32,43 @@ app.get('/perplexity-health', (req, res) => {
 
 // Public healthcheck FIRST (no auth)
 // Perplexity validation endpoint: JSON-RPC-shaped response, no auth
-app.post('/perplexity-health', express.json(), (req, res) => {
+import express from 'express';
+// ... existing imports
+
+const app = express();
+app.use(express.json());
+
+// JSON-RPC initialize handler just for Perplexity validation
+app.post('/perplexity-health', (req, res) => {
   console.log('Perplexity health request body:', req.body);
 
+  // Expecting an initialize request
+  if (req.body && req.body.method === 'initialize') {
+    return res.json({
+      jsonrpc: "2.0",
+      id: req.body.id ?? 0,
+      result: {
+        protocolVersion: req.body.params?.protocolVersion ?? "2025-06-18",
+        capabilities: {
+          tools: {},
+          resources: {},
+          prompts: {}
+        },
+        serverInfo: {
+          name: "braindump-mcp",
+          version: "0.1.0"
+        }
+      }
+    });
+  }
+
+  // Fallback: return a JSON-RPC error if something unexpected comes in
   res.json({
     jsonrpc: "2.0",
-    id: "healthcheck",
-    result: {
-      method: "health.check",
-      ok: true
+    id: req.body?.id ?? 0,
+    error: {
+      code: -32600,
+      message: "Invalid Request"
     }
   });
 });
