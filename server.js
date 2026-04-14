@@ -25,6 +25,11 @@ app.get('/healthz', (req, res) => {
   res.json({ ok: true });
 });
 
+// Public healthcheck just for connector validation
+app.get('/perplexity-health', (req, res) => {
+  res.json({ ok: true });
+});
+
 // Simple API key auth
 app.use((req, res, next) => {
   if (!apiKey) return next();
