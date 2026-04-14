@@ -35,8 +35,11 @@ app.get('/perplexity-health', (req, res) => {
 app.post('/perplexity-health', (req, res) => {
   res.json({
     jsonrpc: "2.0",
-    id: null,
-    result: { ok: true }
+    id: "healthcheck",        // non-null, string
+    result: {
+      method: "health.check", // include a method-like field in result
+      ok: true
+    }
   });
 });
 
