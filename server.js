@@ -31,8 +31,13 @@ app.get('/perplexity-health', (req, res) => {
 });
 
 // Public healthcheck FIRST (no auth)
+// Perplexity validation endpoint: JSON-RPC-shaped response, no auth
 app.post('/perplexity-health', (req, res) => {
-  res.json({ ok: true });
+  res.json({
+    jsonrpc: "2.0",
+    id: null,
+    result: { ok: true }
+  });
 });
 
 // Simple API key auth
