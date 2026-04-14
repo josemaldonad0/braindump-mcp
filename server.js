@@ -30,6 +30,11 @@ app.get('/perplexity-health', (req, res) => {
   res.json({ ok: true });
 });
 
+// Public healthcheck FIRST (no auth)
+app.post('/perplexity-health', (req, res) => {
+  res.json({ ok: true });
+});
+
 // Simple API key auth
 app.use((req, res, next) => {
   if (!apiKey) return next();
