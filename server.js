@@ -26,6 +26,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// healthcheck
+app.get('/', (req, res) => {
+  res.json({ ok: true });
+});
+
 // Helpers
 function loadDomain(domainId) {
   const filePath = path.join(braindumpDir, `${domainId}.md`);
