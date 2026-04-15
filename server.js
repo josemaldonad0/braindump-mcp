@@ -20,23 +20,35 @@ app.use(bodyParser.json());
  * Basic health checks
  */
 app.get('/', (req, res) => {
-  res.json({ ok: true });
+  res.json({
+    jsonrpc: '2.0',
+    id: 0,
+    result: { ok: true, route: 'root' }
+  });
 });
 
 app.get('/healthz', (req, res) => {
-  res.json({ ok: true });
+  res.json({
+    jsonrpc: '2.0',
+    id: 0,
+    result: { ok: true, route: 'healthz' }
+  });
 });
 
 /**
  * Perplexity health / validation endpoint
- * - GET /perplexity-health -> { ok: true }
+ * - GET /perplexity-health -> JSON-RPC ok
  * - POST /perplexity-health:
  *   * method: "initialize" -> JSON-RPC response
  *   * method: "notifications/initialized" -> JSON-RPC ok response
  *   * anything else -> generic JSON-RPC ok response
  */
 app.get('/perplexity-health', (req, res) => {
-  res.json({ ok: true });
+  res.json({
+    jsonrpc: '2.0',
+    id: 0,
+    result: { ok: true, route: 'perplexity-health' }
+  });
 });
 
 // No auth on this endpoint
@@ -44,12 +56,13 @@ app.post('/perplexity-health', (req, res) => {
   console.log('Perplexity health request body:', req.body);
 
   const { method, id, params } = req.body || {};
+  const responseId = id ?? 0;
 
   // 1) Proper JSON-RPC initialize request
   if (method === 'initialize') {
     return res.json({
       jsonrpc: '2.0',
-      id: id ?? 0,
+      id: responseId,
       result: {
         protocolVersion: params?.protocolVersion ?? '2025-06-18',
         capabilities: {
@@ -65,27 +78,37 @@ app.post('/perplexity-health', (req, res) => {
     });
   }
 
-  // 2) Notifications (no id) like `notifications/initialized`
-  if (method === 'notifications/initialized' && id === undefined) {
+  // 2) Notifications like `notifications/initialized`
+  if (method === 'notifications/initialized') {
     return res.json({
       jsonrpc: '2.0',
-      id: 0,
+      id: responseId,
       result: { ok: true }
     });
   }
 
-  // 3) Any other calls: generic JSON-RPC success so the validator is happy
+  // 3) Any other calls: generic JSON-RPC success
   return res.json({
     jsonrpc: '2.0',
-    id: id ?? 0,
+    id: responseId,
     result: { ok: true }
   });
 });
 
 /**
  * Simple API key auth for the rest of the API
+ * Root, healthz, and perplexity-health remain public so connector
+ * probes without headers do not 401.
  */
 app.use((req, res, next) => {
+  if (
+    req.path === '/' ||
+    req.path === '/healthz' ||
+    req.path === '/perplexity-health'
+  ) {
+    return next();
+  }
+
   if (!apiKey) return next();
   const headerKey = req.headers['x-api-key'];
   if (headerKey !== apiKey) {
