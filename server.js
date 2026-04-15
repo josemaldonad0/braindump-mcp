@@ -17,16 +17,30 @@ if (!fs.existsSync(braindumpDir)) {
 app.use(bodyParser.json());
 
 /**
- * Basic health checks
+ * Root / basic health
  */
-app.get('/', (req, res) => {
-  res.json({
+function rootOkPayload(extra = {}) {
+  return {
     jsonrpc: '2.0',
     id: 0,
-    result: { ok: true, route: 'root' }
-  });
+    result: { ok: true, route: 'root', ...extra }
+  };
+}
+
+// Root GET – simple probe
+app.get('/', (req, res) => {
+  res.json(rootOkPayload());
 });
 
+// Root POST – Perplexity MCP probe (JSON-RPC-shaped)
+app.post('/', (req, res) => {
+  console.log('Root MCP request body:', req.body);
+  res.json(rootOkPayload({ method: req.body?.method ?? null }));
+});
+
+/**
+ * Healthz
+ */
 app.get('/healthz', (req, res) => {
   res.json({
     jsonrpc: '2.0',
